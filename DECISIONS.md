@@ -35,9 +35,18 @@
    - Scanned logistics documents often have faded or missing table lines
    - Model is instructed to use col1..colN if headers are unclear
 
+7. **Table row descriptions: MODEL NO. only (no merged descriptions)**: Commercial invoices often have item descriptions on continuation lines below the MODEL NO. We chose to keep only the MODEL NO. without merging descriptions.
+   - **Why**: OpenAI returns clean, deterministic rows with just MODEL NO. + numeric values
+   - **Trade-off**: Descriptions like "SCREW 4.37" or "THREAD TAKE-UP SPRING" are not captured
+   - **Rationale given time constraint**:
+     - Merging descriptions would require prompt engineering to get OpenAI to output them, which is non-deterministic
+     - Current output is consistent and verifiable
+     - Safety-net code exists (`_merge_continuation_rows()`) if OpenAI ever returns description-only rows
+   - **Production improvement**: Could update prompt to explicitly request descriptions be appended to MODEL NO.
+
 ## Confidence Scoring
 
-7. **Hybrid confidence**: `final = 0.6*heuristic + 0.4*(model_confidence*100)`
+8. **Hybrid confidence**: `final = 0.6*heuristic + 0.4*(model_confidence*100)`
    - Model confidence alone is not calibrated for document extraction
    - Heuristics boost confidence when patterns match expectations:
      - INV/INVOICE prefix for invoice numbers
@@ -45,13 +54,13 @@
      - ZIP codes, street patterns for addresses
      - Currency symbols, comma formatting for values
 
-8. **High/Med/Low badges**: >=80 High, 50-79 Med, <50 Low
+9. **High/Med/Low badges**: >=80 High, 50-79 Med, <50 Low
    - Simple visual indicator for users
    - Percentages shown for transparency
 
 ## Validation & Error Handling
 
-9. **JSON validation with 2 retries**: If model output is invalid JSON, retry with a "repair" prompt.
+10. **JSON validation with 2 retries**: If model output is invalid JSON, retry with a "repair" prompt.
    - OpenAI occasionally wraps JSON in markdown code blocks
    - Retry prompt includes validation error summary
    - After 2 retries, return HTTP 500 with error details

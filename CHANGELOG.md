@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.0.3] - 2026-01-29
+
+### Added
+- **Continuation row merging for tables**: Description-only lines in tables (common in commercial invoices) are now merged with the previous row. For example, "148536001" + "SCREW 4.37" becomes "148536001 - SCREW 4.37".
+
+### Changed
+- Added `_is_continuation_row()` and `_merge_continuation_rows()` methods to ExtractionService
+- 14 new unit tests for continuation row detection and merging
+
 ## [1.0.2] - 2026-01-29
 
 ### Fixed

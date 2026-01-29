@@ -148,6 +148,7 @@ Health check endpoint.
 6. **Authentication**: API key or OAuth for production
 7. **Caching**: Cache extraction results by file hash
 8. **Better error handling**: Granular error codes, retry with exponential backoff
+9. **Table item descriptions**: Currently only MODEL NO. is captured; descriptions on continuation lines (e.g., "SCREW 4.37") could be merged via prompt engineering
 
 ## Testing
 

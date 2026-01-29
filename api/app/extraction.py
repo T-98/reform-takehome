@@ -212,6 +212,53 @@ class ExtractionService:
         data = json.loads(raw_json)
         return RawExtractionOutput.model_validate(data)
 
+    def _is_continuation_row(self, cells: list[str]) -> bool:
+        """
+        Detect if a row is a continuation of the previous row.
+
+        A continuation row has:
+        - First cell contains text (the description continuation)
+        - All other cells (columns 2-N) are empty/blank
+        """
+        if not cells or len(cells) <= 1:
+            return False
+        first_cell = cells[0]
+        if not first_cell or not first_cell.strip():
+            return False
+        # All remaining cells must be empty
+        return all(not (c and c.strip()) for c in cells[1:])
+
+    def _merge_continuation_rows(self, rows: list[TableRow]) -> list[TableRow]:
+        """
+        Merge continuation rows into their parent rows.
+
+        Continuation rows (description-only lines) are appended to the
+        previous row's first cell with a " - " separator.
+        """
+        if len(rows) <= 1:
+            return rows
+
+        merged: list[TableRow] = []
+        i = 0
+        while i < len(rows):
+            current = rows[i]
+            current_cells = list(current.cells)  # Make mutable copy
+            current_conf = current.row_confidence
+
+            # Absorb subsequent continuation rows
+            j = i + 1
+            while j < len(rows) and self._is_continuation_row(rows[j].cells):
+                cont_text = rows[j].cells[0].strip() if rows[j].cells[0] else ""
+                if cont_text:
+                    current_cells[0] = f"{current_cells[0]} - {cont_text}"
+                current_conf = min(current_conf, rows[j].row_confidence)
+                j += 1
+
+            merged.append(TableRow(cells=current_cells, row_confidence=current_conf))
+            i = j
+
+        return merged
+
     def _transform_to_response(self, raw: RawExtractionOutput) -> ExtractionResponse:
         """Transform raw extraction to final response with confidence scoring."""
 
@@ -264,6 +311,9 @@ class ExtractionService:
                     cells=cells,
                     row_confidence=float(row_data.get("row_confidence", 0.5))
                 ))
+
+            # Merge continuation rows (description-only lines) into parent rows
+            rows = self._merge_continuation_rows(rows)
 
             # Convert null headers to empty strings
             raw_headers = table_data.get("headers", [])
