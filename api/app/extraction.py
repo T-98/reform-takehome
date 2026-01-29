@@ -16,17 +16,18 @@ from .confidence import score_canonical_field, score_identifier, get_badge, comp
 
 EXTRACTION_PROMPT = """You are a document extraction assistant specialized in logistics and trade documents.
 
-TASK: Extract structured data from the provided PDF document image(s).
+TASK: Extract structured data from ALL provided page images. You will receive one or more images representing pages of a PDF document. You MUST analyze EVERY image/page and combine the extracted data into a single unified response.
 
 CRITICAL INSTRUCTIONS:
-1. Documents vary in format; fields may be missing. Use null when a field is absent.
-2. Do NOT invent or fabricate values. Only extract what is clearly visible.
-3. Return ONLY valid JSON matching the schema below. No markdown, no explanation.
-4. Tables may have NO visible borders or lines. You MUST infer columns from alignment, spacing, and repeated row patterns.
-5. If table headers are missing or unclear, use col1, col2, col3, etc.
-6. Preserve column order and row order exactly as they appear in the document.
-7. If multiple tables exist, extract the most relevant "items/commodities" table. If none is clearly an items table, return tables: [].
-8. Provide model_confidence (0.0 to 1.0) for EVERY extracted value.
+1. IMPORTANT: Analyze ALL images provided. Each image is a separate page of the document. Extract data from EVERY page.
+2. Documents vary in format; fields may be missing. Use null when a field is absent.
+3. Do NOT invent or fabricate values. Only extract what is clearly visible.
+4. Return ONLY valid JSON matching the schema below. No markdown, no explanation.
+5. Tables may have NO visible borders or lines. You MUST infer columns from alignment, spacing, and repeated row patterns.
+6. If table headers are missing or unclear, use col1, col2, col3, etc.
+7. Preserve column order and row order exactly as they appear in the document.
+8. If multiple tables exist across pages, combine rows into a single table if they share the same structure.
+9. Provide model_confidence (0.0 to 1.0) for EVERY extracted value.
 
 DOCUMENT TYPES:
 - "BOL" for Bill of Lading
@@ -120,6 +121,7 @@ class ExtractionService:
         """Extract structured data from PDF with validation and retries."""
         # Convert PDF pages to images (OpenAI vision API only accepts images)
         page_images = self._pdf_to_images(pdf_bytes)
+        print(f"[Extraction] Converted PDF to {len(page_images)} page image(s)")
         if not page_images:
             return ExtractionResponse(extraction_error="Failed to convert PDF to images")
 
@@ -186,6 +188,7 @@ class ExtractionService:
                 }
             })
 
+        print(f"[Extraction] Sending {len(page_images)} image(s) to OpenAI")
         response = self.client.chat.completions.create(
             model=self.model,
             messages=[{"role": "user", "content": content}],
