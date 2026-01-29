@@ -6,6 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 
+// Import react-pdf styles (required for TextLayer and AnnotationLayer)
+import "react-pdf/dist/Page/TextLayer.css";
+import "react-pdf/dist/Page/AnnotationLayer.css";
+
 // Dynamically import react-pdf components to avoid SSR issues
 const Document = dynamic(
   () => import("react-pdf").then((mod) => mod.Document),
@@ -25,22 +29,12 @@ export function PDFViewer({ file }: PDFViewerProps) {
   const [error, setError] = useState<string | null>(null);
   const [pdfReady, setPdfReady] = useState(false);
 
-  // Configure worker and load CSS on mount
+  // Configure PDF.js worker on mount
   useEffect(() => {
     import("react-pdf").then((pdfjs) => {
       pdfjs.pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.pdfjs.version}/build/pdf.worker.min.mjs`;
       setPdfReady(true);
     });
-    // Load CSS dynamically
-    const link1 = document.createElement("link");
-    link1.rel = "stylesheet";
-    link1.href = "https://unpkg.com/react-pdf@9.2.1/dist/Page/AnnotationLayer.css";
-    document.head.appendChild(link1);
-
-    const link2 = document.createElement("link");
-    link2.rel = "stylesheet";
-    link2.href = "https://unpkg.com/react-pdf@9.2.1/dist/Page/TextLayer.css";
-    document.head.appendChild(link2);
   }, []);
 
   const onDocumentLoadSuccess = useCallback(

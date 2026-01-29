@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.0.4] - 2026-01-29
+
+### Fixed
+
+- **Multiple tables now extracted separately**: Documents with multiple tables (e.g., cargo table + charges table in BOLs) are now extracted as separate entries instead of being combined.
+- **Column alignment normalized**: Rows with mismatched cell counts are now padded or merged to match header count.
+
+### Changed
+
+- Updated extraction prompt to explicitly keep tables separate (removed "combine tables" instruction)
+- Added `_normalize_table_rows()` method to ensure row/header alignment
+- 8 new unit tests for row normalization
+
 ## [1.0.3] - 2026-01-29
 
 ### Added

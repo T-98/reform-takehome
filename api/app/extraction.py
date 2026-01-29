@@ -26,8 +26,12 @@ CRITICAL INSTRUCTIONS:
 5. Tables may have NO visible borders or lines. You MUST infer columns from alignment, spacing, and repeated row patterns.
 6. If table headers are missing or unclear, use col1, col2, col3, etc.
 7. Preserve column order and row order exactly as they appear in the document.
-8. If multiple tables exist across pages, combine rows into a single table if they share the same structure.
-9. Provide model_confidence (0.0 to 1.0) for EVERY extracted value.
+8. Extract ALL tables as SEPARATE entries in the tables array. Do NOT combine different tables.
+9. Common logistics tables to look for (extract each as a separate table):
+   - Cargo/commodities table (marks, packages, description, weight, measurement)
+   - Charges table (freight rates, prepaid, collect)
+10. Each row MUST have exactly the same number of cells as there are headers. Pad with "" if needed.
+11. Provide model_confidence (0.0 to 1.0) for EVERY extracted value.
 
 DOCUMENT TYPES:
 - "BOL" for Bill of Lading
@@ -259,6 +263,30 @@ class ExtractionService:
 
         return merged
 
+    def _normalize_table_rows(self, headers: list[str], rows: list[TableRow]) -> list[TableRow]:
+        """
+        Ensure all rows have the same number of cells as headers.
+
+        - If a row has fewer cells than headers, pad with empty strings.
+        - If a row has more cells than headers, merge extras into the last cell.
+        """
+        h = len(headers)
+        if h == 0:
+            return rows
+
+        normalized: list[TableRow] = []
+        for row in rows:
+            cells = list(row.cells)
+            if len(cells) < h:
+                # Pad with empty strings
+                cells.extend([""] * (h - len(cells)))
+            elif len(cells) > h:
+                # Merge extra cells into last column with separator
+                extra = cells[h - 1:]
+                cells = cells[: h - 1] + [" | ".join(str(c) for c in extra if c)]
+            normalized.append(TableRow(cells=cells, row_confidence=row.row_confidence))
+        return normalized
+
     def _transform_to_response(self, raw: RawExtractionOutput) -> ExtractionResponse:
         """Transform raw extraction to final response with confidence scoring."""
 
@@ -302,6 +330,10 @@ class ExtractionService:
         # Transform tables
         tables: list[Table] = []
         for idx, table_data in enumerate(raw.tables):
+            # Convert null headers to empty strings (extract first for normalization)
+            raw_headers = table_data.get("headers", [])
+            headers = [h if h is not None else "" for h in raw_headers]
+
             rows: list[TableRow] = []
             for row_data in table_data.get("rows", []):
                 # Convert null cells to empty strings
@@ -315,9 +347,9 @@ class ExtractionService:
             # Merge continuation rows (description-only lines) into parent rows
             rows = self._merge_continuation_rows(rows)
 
-            # Convert null headers to empty strings
-            raw_headers = table_data.get("headers", [])
-            headers = [h if h is not None else "" for h in raw_headers]
+            # Normalize row cell counts to match header count
+            rows = self._normalize_table_rows(headers, rows)
+
             tables.append(Table(
                 table_id=table_data.get("table_id", f"table_{idx}"),
                 title=table_data.get("title"),

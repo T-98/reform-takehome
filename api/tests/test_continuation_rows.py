@@ -136,3 +136,100 @@ class TestMergeContinuationRows:
         assert len(merged) == 2
         assert merged[0].cells[0] == "Orphan description"
         assert merged[1].cells[0] == "MODEL-A"
+
+
+class TestNormalizeTableRows:
+    """Tests for _normalize_table_rows() column alignment."""
+
+    def setup_method(self):
+        with patch.dict("os.environ", {"OPENAI_API_KEY": "test-key"}):
+            self.service = ExtractionService()
+
+    def test_rows_already_match_headers(self):
+        """Rows with correct column count remain unchanged."""
+        headers = ["A", "B", "C"]
+        rows = [
+            TableRow(cells=["1", "2", "3"], row_confidence=0.9),
+            TableRow(cells=["4", "5", "6"], row_confidence=0.8),
+        ]
+        normalized = self.service._normalize_table_rows(headers, rows)
+
+        assert len(normalized) == 2
+        assert normalized[0].cells == ["1", "2", "3"]
+        assert normalized[1].cells == ["4", "5", "6"]
+
+    def test_pad_short_rows(self):
+        """Rows with fewer cells are padded with empty strings."""
+        headers = ["A", "B", "C", "D"]
+        rows = [
+            TableRow(cells=["1", "2"], row_confidence=0.9),
+        ]
+        normalized = self.service._normalize_table_rows(headers, rows)
+
+        assert len(normalized[0].cells) == 4
+        assert normalized[0].cells == ["1", "2", "", ""]
+
+    def test_merge_extra_cells(self):
+        """Rows with extra cells have them merged into last column."""
+        headers = ["A", "B", "C"]
+        rows = [
+            TableRow(cells=["1", "2", "3", "4", "5"], row_confidence=0.9),
+        ]
+        normalized = self.service._normalize_table_rows(headers, rows)
+
+        assert len(normalized[0].cells) == 3
+        assert normalized[0].cells[0] == "1"
+        assert normalized[0].cells[1] == "2"
+        assert normalized[0].cells[2] == "3 | 4 | 5"
+
+    def test_merge_extra_cells_skips_empty(self):
+        """Empty extra cells are not included in merge."""
+        headers = ["A", "B"]
+        rows = [
+            TableRow(cells=["1", "2", "", "3", ""], row_confidence=0.9),
+        ]
+        normalized = self.service._normalize_table_rows(headers, rows)
+
+        assert len(normalized[0].cells) == 2
+        assert normalized[0].cells[1] == "2 | 3"
+
+    def test_empty_headers(self):
+        """Empty headers list returns rows unchanged."""
+        headers = []
+        rows = [
+            TableRow(cells=["1", "2", "3"], row_confidence=0.9),
+        ]
+        normalized = self.service._normalize_table_rows(headers, rows)
+
+        assert normalized == rows
+
+    def test_empty_rows(self):
+        """Empty rows list returns empty list."""
+        headers = ["A", "B", "C"]
+        normalized = self.service._normalize_table_rows(headers, [])
+
+        assert normalized == []
+
+    def test_preserves_confidence(self):
+        """Row confidence is preserved during normalization."""
+        headers = ["A", "B", "C"]
+        rows = [
+            TableRow(cells=["1"], row_confidence=0.75),
+        ]
+        normalized = self.service._normalize_table_rows(headers, rows)
+
+        assert normalized[0].row_confidence == 0.75
+
+    def test_mixed_row_lengths(self):
+        """Handle mix of short, correct, and long rows."""
+        headers = ["A", "B", "C"]
+        rows = [
+            TableRow(cells=["1"], row_confidence=0.9),
+            TableRow(cells=["2", "3", "4"], row_confidence=0.8),
+            TableRow(cells=["5", "6", "7", "8"], row_confidence=0.7),
+        ]
+        normalized = self.service._normalize_table_rows(headers, rows)
+
+        assert normalized[0].cells == ["1", "", ""]
+        assert normalized[1].cells == ["2", "3", "4"]
+        assert normalized[2].cells == ["5", "6", "7 | 8"]

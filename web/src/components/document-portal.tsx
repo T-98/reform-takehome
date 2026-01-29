@@ -78,7 +78,7 @@ export function DocumentPortal() {
           <div>
             <h1 className="text-2xl font-bold">Document Upload Portal</h1>
             <p className="text-muted-foreground">
-              Upload a scanned PDF to extract structured data
+              Upload a PDF to extract structured data
             </p>
           </div>
           {selectedFile && (
