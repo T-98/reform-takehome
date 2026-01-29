@@ -72,7 +72,7 @@ export function PDFViewer({ file }: PDFViewerProps) {
 
   return (
     <Card className="h-full flex flex-col">
-      <CardContent className="flex-1 overflow-auto p-4">
+      <CardContent className="flex-1 overflow-y-auto p-4">
         {error ? (
           <div className="flex items-center justify-center h-full text-destructive">
             Failed to load PDF: {error}

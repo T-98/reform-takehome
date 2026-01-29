@@ -118,17 +118,21 @@ export function DocumentPortal() {
         </Card>
 
         {/* Main Content - PDF Viewer + Extraction Panel */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" style={{ minHeight: "600px" }}>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-[540px] lg:h-[75vh] lg:max-h-[80vh]">
           {/* Left: PDF Viewer */}
-          <PDFViewer file={selectedFile} />
+          <div className="min-h-0">
+            <PDFViewer file={selectedFile} />
+          </div>
 
           {/* Right: Extraction Results */}
-          <ExtractionPanel
-            state={uiState}
-            data={extractionResult}
-            error={errorMessage}
-            onRetry={handleRetry}
-          />
+          <div className="min-h-0">
+            <ExtractionPanel
+              state={uiState}
+              data={extractionResult}
+              error={errorMessage}
+              onRetry={handleRetry}
+            />
+          </div>
         </div>
       </div>
     </div>
