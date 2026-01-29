@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker-compose up:*)",
+      "Bash(source .venv/bin/activate)",
+      "Bash(pip install:*)",
+      "Bash(pytest:*)",
+      "Bash(npm run build:*)",
+      "Bash(source venv/bin/activate)",
+      "Bash(python3 -m pytest:*)"
+    ]
+  }
+}
