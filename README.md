@@ -150,6 +150,38 @@ Health check endpoint.
 8. **Better error handling**: Granular error codes, retry with exponential backoff
 9. **Table item descriptions**: Currently only MODEL NO. is captured; descriptions on continuation lines (e.g., "SCREW 4.37") could be merged via prompt engineering
 
+## BUGS
+1. After adding heuristics for multi-table extraction and multi-line row merging, the OpenAI vision extraction became unstable: fixes for one document type regress others (tables get mis-selected, columns shift, or rows collapse).
+
+## Key Assumption (Production vs. Take-home)
+
+In this take-home, I’m using a single general-purpose vision model + carefully written prompts to handle *both* table detection (including borderless tables) and multi-line row merging. This works, but it’s inherently less stable — prompt changes that fix one PDF can regress another.
+
+In a real production environment, I would **not** rely on prompt engineering alone for document structure.
+
+### How I’d address this in production
+
+- **Two-stage pipeline (more deterministic):**  
+  Use a dedicated OCR + layout/table detection engine first, then use an LLM only to map the extracted structure into our canonical schema.
+
+- **Specialized parsers for structure:**  
+  Table boundaries, columns, and reading order should come from a layout engine (with bounding boxes), not from the LLM “guessing” structure.
+
+- **Lightweight document routing:**  
+  Even if we keep a single output schema, I’d classify documents (invoice vs B/L vs packing list) and route to the best extractor strategy for that type.
+
+- **Confidence that isn’t just “model vibes”:**  
+  Prefer OCR/layout engine confidences + deterministic validations over LLM self-reported confidence.
+
+- **Regression harness (non-negotiable):**  
+  Maintain a small corpus of representative PDFs with expected outputs and run automated regression tests on every change so fixes don’t break other formats.
+
+- **Human-in-the-loop for ambiguous cases:**  
+  When confidence is low or structure is unclear, surface it for review instead of forcing a best guess.
+
+- **Better observability:**  
+  Log key parsing decisions (table selected, rows merged, column normalization applied) so failures are diagnosable and not “prompt magic.”
+
 ## Testing
 
 ```bash
